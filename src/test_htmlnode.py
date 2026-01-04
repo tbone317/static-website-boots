@@ -5,6 +5,7 @@ import unittest
 from htmlnode import HTMLNode, LeafNode, ParentNode
 from textnode import TextNode, TextType
 from main import text_node_to_html_node
+from inline_markdown import split_nodes_delimiter
 
 class TestHTMLNode(unittest.TestCase):
     def test_defaults(self):

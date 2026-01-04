@@ -3,7 +3,7 @@
 import unittest
 
 from textnode import TextNode, TextType
-from main import split_nodes_delimiter
+from inline_markdown import split_nodes_delimiter
 
 class TestTextNode(unittest.TestCase):
     def test_eq(self):
