@@ -3,6 +3,8 @@
 import unittest
 
 from htmlnode import HTMLNode, LeafNode, ParentNode
+from textnode import TextNode, TextType
+from main import text_node_to_html_node
 
 class TestHTMLNode(unittest.TestCase):
     def test_defaults(self):
@@ -106,3 +108,39 @@ class TestHTMLNode(unittest.TestCase):
         parent = ParentNode(tag="div", children=None)
         with self.assertRaises(ValueError):
             parent.to_html()
+
+    def test_text(self):
+        node = TextNode("This is a text node.", TextType.TEXT)
+        html_node = text_node_to_html_node(node)
+        self.assertEqual(html_node.tag, None)
+        self.assertEqual(html_node.value, "This is a text node.")
+
+    def test_bold(self):
+        node = TextNode("Bold Text", TextType.BOLD)
+        html_node = text_node_to_html_node(node)
+        expected_html = "<b>Bold Text</b>"
+        self.assertEqual(html_node.to_html(), expected_html)
+
+    def test_italic(self):
+        node = TextNode("Italic Text", TextType.ITALIC)
+        html_node = text_node_to_html_node(node)
+        expected_html = "<i>Italic Text</i>"
+        self.assertEqual(html_node.to_html(), expected_html)
+
+    def test_code(self):
+        node = TextNode("print('Hello, World!')", TextType.CODE)
+        html_node = text_node_to_html_node(node)
+        expected_html = "<code>print('Hello, World!')</code>"
+        self.assertEqual(html_node.to_html(), expected_html)
+
+    def test_link(self):
+        node = TextNode("Click here", TextType.LINK, url="https://example.com")
+        html_node = text_node_to_html_node(node)
+        expected_html = '<a href="https://example.com">Click here</a>'
+        self.assertEqual(html_node.to_html(), expected_html)
+
+    def test_image(self):
+        node = TextNode("An image", TextType.IMAGE, url="https://example.com/image.png")
+        html_node = text_node_to_html_node(node)
+        expected_html = '<img src="https://example.com/image.png" alt="An image" />'
+        self.assertEqual(html_node.to_html(), expected_html)
