@@ -1,6 +1,6 @@
 from textnode import TextNode, TextType
 
-def split_nodes_delimiter(old_nodes, delimiter, text_type):
+def split_nodes_delimiter(old_nodes: list[TextNode], delimiter: str, text_type: TextType):
     """
     Split text nodes by a delimiter into multiple nodes.
     
@@ -28,11 +28,15 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):
         if node.text_type != TextType.TEXT:
             new_nodes.append(node)
             continue
-        
+        # If the delimiter isn't present, keep the node as is
+        if delimiter not in node.text:
+            new_nodes.append(node)
+            continue
+
         # Split the text by the delimiter
         parts = node.text.split(delimiter)
-        
-        # If odd number of parts, closing delimiter is missing
+
+        # If even number of parts, closing delimiter is missing
         if len(parts) % 2 == 0:
             raise ValueError(f"Invalid markdown syntax: unclosed delimiter '{delimiter}'")
         
