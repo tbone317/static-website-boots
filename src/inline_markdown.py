@@ -1,5 +1,6 @@
 import re
 from textnode import TextNode, TextType
+from htmlnode import HTMLNode, LeafNode, ParentNode
 
 def extract_markdown_images(text: str) -> list[tuple[str, str]]:
     """
@@ -260,3 +261,176 @@ def markdown_to_blocks(markdown: str) -> list[str]:
         if stripped:
             filtered_blocks.append(stripped)
     return filtered_blocks
+
+
+def block_to_block_type(block: str) -> str:
+    """
+    Determine the type of a markdown block.
+    
+    Returns one of: "heading", "code", "unordered_list", "ordered_list", "quote", "paragraph"
+    
+    Args:
+        block: A single markdown block string
+        
+    Returns:
+        String representing the block type
+    """
+    lines = block.split("\n")
+    
+    # Check for heading (starts with # 1-6 times)
+    if lines[0].startswith("#"):
+        heading_level = 0
+        for char in lines[0]:
+            if char == "#":
+                heading_level += 1
+            else:
+                break
+        if heading_level <= 6 and heading_level > 0 and (len(lines[0]) > heading_level and lines[0][heading_level] == " "):
+            return "heading"
+    
+    # Check for code block (starts and ends with ```)
+    if block.startswith("```") and block.endswith("```"):
+        return "code"
+    
+    # Check for unordered list (lines start with - or * followed by space)
+    if all(line.startswith("- ") or line.startswith("* ") for line in lines):
+        return "unordered_list"
+    
+    # Check for ordered list (lines start with number. followed by space)
+    is_ordered = True
+    for i, line in enumerate(lines):
+        if not (line.startswith(f"{i + 1}. ")):
+            is_ordered = False
+            break
+    if is_ordered:
+        return "ordered_list"
+    
+    # Check for quote (all lines start with >)
+    if all(line.startswith(">") for line in lines):
+        return "quote"
+    
+    return "paragraph"
+
+
+def text_to_children(text: str) -> list[HTMLNode]:
+    """
+    Convert inline markdown text to a list of child HTMLNodes.
+    
+    Processes inline markdown (bold, italic, code, images, links) and
+    converts TextNodes to HTMLNodes.
+    
+    Args:
+        text: Text possibly containing inline markdown
+        
+    Returns:
+        List of HTMLNode objects representing the parsed inline content
+    """
+    from main import text_node_to_html_node
+    
+    text_nodes = text_to_textnodes(text)
+    html_nodes = []
+    for text_node in text_nodes:
+        html_node = text_node_to_html_node(text_node)
+        html_nodes.append(html_node)
+    return html_nodes
+
+
+def markdown_to_html_node(markdown: str) -> HTMLNode:
+    """
+    Convert a full markdown document to a single parent HTMLNode.
+    
+    Splits the markdown into blocks, determines the type of each block,
+    creates appropriate HTMLNodes, and nests them under a single parent div.
+    
+    Args:
+        markdown: Full markdown document as a string
+        
+    Returns:
+        Parent HTMLNode (div) containing all block content
+    """
+    from main import text_node_to_html_node
+    
+    blocks = markdown_to_blocks(markdown)
+    children = []
+    
+    for block in blocks:
+        block_type = block_to_block_type(block)
+        
+        if block_type == "heading":
+            # Extract heading level and content
+            level = 0
+            for char in block:
+                if char == "#":
+                    level += 1
+                else:
+                    break
+            content = block[level:].strip()
+            tag = f"h{level}"
+            children_nodes = text_to_children(content)
+            html_node = ParentNode(tag, children_nodes)
+            children.append(html_node)
+            
+        elif block_type == "code":
+            # Remove the ``` markers and get the content
+            lines = block.split("\n")
+            code_content = "\n".join(lines[1:-1]) if len(lines) > 2 else ""
+            if not code_content and len(lines) >= 2:
+                code_content = "\n".join(lines[1:-1])
+            # Add newline at end if there's content
+            if code_content:
+                code_content += "\n"
+            code_node = LeafNode("code", code_content)
+            pre_node = ParentNode("pre", [code_node])
+            children.append(pre_node)
+            
+        elif block_type == "unordered_list":
+            # Split into list items, remove bullet points
+            lines = block.split("\n")
+            list_items = []
+            for line in lines:
+                # Remove '- ' or '* ' prefix
+                item_text = line[2:] if line.startswith(("- ", "* ")) else line
+                children_nodes = text_to_children(item_text)
+                li_node = ParentNode("li", children_nodes)
+                list_items.append(li_node)
+            ul_node = ParentNode("ul", list_items)
+            children.append(ul_node)
+            
+        elif block_type == "ordered_list":
+            # Split into list items, remove number prefix
+            lines = block.split("\n")
+            list_items = []
+            for line in lines:
+                # Remove number and period prefix (e.g., "1. ")
+                dot_index = line.find(". ")
+                if dot_index != -1:
+                    item_text = line[dot_index + 2:]
+                else:
+                    item_text = line
+                children_nodes = text_to_children(item_text)
+                li_node = ParentNode("li", children_nodes)
+                list_items.append(li_node)
+            ol_node = ParentNode("ol", list_items)
+            children.append(ol_node)
+            
+        elif block_type == "quote":
+            # Remove '>' from each line and join
+            lines = block.split("\n")
+            quote_lines = []
+            for line in lines:
+                # Remove leading '>' and optional space
+                stripped = line[1:].strip() if line.startswith(">") else line
+                quote_lines.append(stripped)
+            quote_text = " ".join(quote_lines)
+            children_nodes = text_to_children(quote_text)
+            blockquote_node = ParentNode("blockquote", children_nodes)
+            children.append(blockquote_node)
+            
+        else:  # paragraph
+            # Join multi-line paragraphs with spaces
+            paragraph_text = " ".join(block.split("\n"))
+            children_nodes = text_to_children(paragraph_text)
+            p_node = ParentNode("p", children_nodes)
+            children.append(p_node)
+    
+    return ParentNode("div", children)
