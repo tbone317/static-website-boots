@@ -25,7 +25,7 @@ def main():
     
     # Generate the page from content/index.md
     #generate_page("content/index.md", "template.html", "docs/index.html", basepath)
-    generate_pages_recursively(basepath)
+    generate_pages_recursively(dest_dir_path="docs", basepath=basepath)
 
 def generate_pages_recursively(basepath="/", dir_path_content="content", dir_template_path="template.html", dest_dir_path="docs"):
     for root, dirs, files in os.walk(dir_path_content):
