@@ -119,8 +119,11 @@ def generate_page(from_path, template_path, dest_path, basepath="/"):
     page_content = page_content.replace("{{ Content }}", html_content)
     
     # Replace absolute paths with basepath-aware paths
-    page_content = page_content.replace('href="/', f'href="{basepath}')
-    page_content = page_content.replace('src="/', f'src="{basepath}')
+    # Normalize basepath: remove trailing slash, then add it back in the replacement
+    # This prevents double slashes when basepath is "/"
+    base_for_replacement = basepath.rstrip('/')
+    page_content = page_content.replace('href="/', f'href="{base_for_replacement}/')
+    page_content = page_content.replace('src="/', f'src="{base_for_replacement}/')
     
     # Create destination directory if needed
     dest_dir = os.path.dirname(dest_path)
